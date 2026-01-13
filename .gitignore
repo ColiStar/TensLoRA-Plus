@@ -1,22 +1,8 @@
-src/__pycache__/*
-__pycache__
-*/__pycache__/*
-*/*.pyc
-*.pyc
-runs
-*/runs/*
-wandb
-*/wandb/*
-outdated
-*/outdated/*
-scripts
-*/scripts/*
-
-.cache
-slurms
-slurms/*
-
-# Distribution / packaging
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
 .Python
 build/
 develop-eggs/
@@ -35,3 +21,38 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+
+# Virtual Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
+.vscode/
+.idea/
+
+# Project Specific - Runtime & Output
+outputs/
+wandb/
+logs/
+checkpoints/
+sandbox/
+*.tmp
+*.log
+.cache/
+
+# Project Specific - Local Dev Tools & Notes (Do Not Upload)
+auto_scheduler.py
+auto_scheduler_v2.py
+scheduler_v3_completed_runs.txt
+experiment_log.md
+experimental_plan.md
+project_structure.md
+research_directions.md
+
+# Mac
+.DS_Store

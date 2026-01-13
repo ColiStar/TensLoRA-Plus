@@ -1,29 +1,43 @@
-# TensLoRA: Tensor Alternatives for Low-Rank Adaptation
+# TensLoRA+: Heterogeneous Allocation of Rank and Learning Rate
 
-Hi!
+TensLoRA+ is an extension of the **TensLoRA** framework (originally proposed by [Axel Marmoret et al.](#citation)), introducing **Heterogeneous Allocation of Rank and Learning Rate** based on tensor decomposition metrics.
 
-This repository is the official repository for the paper: **"TensLoRA: Tensor Alternatives for Low-Rank Adaptation,"** submitted at ICASSP2026.
-
-TensLoRA introduces tensor-based alternatives to Low-Rank Adaptation (LoRA) for fine-tuning Transformer models with few parameters.
-
------
-
-## What is TensLoRA?
-
-Low-Rank Adaptation (LoRA) is a popular parameter-efficient fine-tuning (PEFT) method that adapts large models by adding trainable low-rank matrices to specific layers, typically the attention projections. Standard LoRA, however, treats the updates for each attention projection (Query, Key, Value) and each layer independently, which may create redundancy.
-
-**TensLoRA** extends this idea by aggregating these individual LoRA update matrices into higher-order tensors. By applying tensor factorization techniques, specifically the Tucker factorization, TensLoRA can model the relationships between different dimensions (like attention heads, projection types, and model depth) in a more structured way.
-
-This approach not only generalizes several existing tensor-based methods (like FacT, LoTR, and LoRTA) but also introduces finer control over the parameter budget through mode-specific compression rates.
+While the original TensLoRA introduced tensor-based alternatives to Low-Rank Adaptation (LoRA), **TensLoRA+** specifically addresses the observation that not all tensor modes contribute equally to model performance. By analyzing metrics such as **Gradient Norm** and **SVD Entropy**, we implement a strategy to allocate more parameters (Rank) and optimization budget (Learning Rate) to the most critical components.
 
 -----
 
 ## Key Features
 
-  * **Unified Framework**: Systematically explores different ways to tensorize LoRA updates.
-  * **Flexible Compression**: Allows for mode-specific ranks, enabling tailored parameter allocation based on the task or modality.
-  * **State-of-the-Art Generalization**: Captures and extends several existing tensor-based adaptation methods within a single, coherent paradigm.
-  * **Competitive Performance**: Experimental results show that certain TensLoRA configurations (e.g., QKV Depth) can outperform standard LoRA with a similar number of parameters.
+### 1. TensLoRA Foundation
+*   **Unified Framework**: Systematically explores different ways to tensorize LoRA updates (Tucker, CP).
+*   **Parameter Efficiency**: Captures high-order correlations between attention heads, layers, and projections.
+
+### 2. TensLoRA+ Contributions (New)
+*   **Heterogeneous Learning Rates**:
+    *   Applies distinct learning rates to the **Core Tensor** (which acts as a global information hub) versus **Factor Matrices**.
+    *   **Inspiration**: This approach adapts the findings from **LoRA+** (Hayou et al., 2024), which showed that using a higher learning rate for the "B" matrix (analogous to our Core) significantly improves training efficiency.
+    *   **Insight**: The Core tensor requires a larger learning rate multiplier to effectively aggregate features from different modes.
+*   **Heterogeneous Rank Allocation**:
+    *   Allocates Rank dynamically based on **SVD Entropy** (Information Density) and **Top-1 Energy** (Redundancy).
+    *   **Strategy**: Modes with high entropy (complex information) receive higher rank, while redundant modes (e.g., certain layers) are compressed to rank as low as 2 without performance loss.
+*   **Metric-Driven Optimization**:
+    *   Provides tools to monitor **Gradient Norm** and **Eigenvalue Spectra** during training to guide hyperparameter tuning.
+
+-----
+
+## Project Structure
+
+```
+TensLoRA/
+├── tenslora/                  # Core Library (Tensor Layers & Operations)
+├── tools/                     # [NEW] Utility Tools
+│   └── experiment_scheduler.py # Automated Multi-GPU Experiment Scheduler
+├── docs/                      # [NEW] Documentation & Analysis
+│   ├── reports/               # Detailed Performance Reports
+│   └── project_motivation.md  # Deep dive into Heterogeneous Rank/LR Logic
+├── train_scripts/             # Training Scripts (RoBERTa, ViT)
+└── ...
+```
 
 -----
 
@@ -31,52 +45,44 @@ This approach not only generalizes several existing tensor-based methods (like F
 
 ### Installation
 
-Clone the repository and install the package as a pip package:
+Clone the repository and install dependencies:
 
 ```bash
-git clone https://github.com/ax-le/TensLORA.git
-cd TensLORA
+git clone https://github.com/your-username/TensLoRA-Plus.git
+cd TensLoRA-Plus
 pip install -e .
 ```
 
-The required dependencies should be automatically installed.
+### Running Experiments
 
-If you want to exactly reproduce our environments, you could use:
-
-```bash
-pip install -r requirements_exact.txt
-```
-
-which is the freeze of the environment used in our tests.
-
-### Usage
-
-To reproduce the experiments from the paper, you can run the training scripts. For example:
+To run a standard TensLoRA experiment:
 
 ```bash
-# Train a ViT model on the EuroSAT dataset using the 'QKV_Depth' tensor construction
-TODO
+python train_scripts/train_roberta.py tenslora --tensor-method att_qkv_depth --n-components 8_8_8_8_8
 ```
 
-For more details on the available configurations and hyperparameters, please refer to the source code.
+To run the **TensLoRA+ Auto-Scheduler** (manages queue across multiple GPUs):
+
+```bash
+python tools/experiment_scheduler.py
+```
+*   This tool automatically balances jobs across available GPUs, monitoring memory usage and handling job queues for large-scale ablation studies.
 
 -----
 
 ## Experimental Results
 
-We evaluated TensLoRA on vision (ViT on EuroSAT, DTD) and language (RoBERTa on COLA, MRPC) benchmarks. Our findings show:
+Our detailed report can be found in [`docs/reports/ECE 273 Final Report.pdf`](docs/reports/ECE%20273%20Final%20Report%20(1).pdf).
 
-  * The structure of the tensor directly impacts performance.
-  * Under an **isoparameters** condition (matching LoRA's parameter count), the **QKV Depth** and **Att QKV Depth** configurations consistently outperform the LoRA baseline.
-  * Aggregating along the attention heads dimension (`Att`) was found to be less effective than grouping by projection type (`QKV`) or layer (`Depth`), suggesting redundancy is not uniform across all modes.
-
-These results highlight the potential of tensor-based methods to improve upon LoRA by better modeling structural correlations.
+**Key Findings:**
+1.  **Core Importance**: The Core tensor in Tucker decomposition is highly sensitive to learning rate. Increasing its LR multiplier significantly accelerates convergence.
+2.  **Redundancy in Layers**: We found that the `Layers` mode often exhibits low Effective Rank, allowing for aggressive compression (rank 4 -> 2) without accuracy loss.
 
 -----
 
 ## Citation
 
-If you find this work useful in your research, please cite our paper:
+This project builds upon the original TensLoRA work. If you use this codebase, please cite the original paper:
 
 ```bibtex
 @article{marmoret2025tenslora,
@@ -85,4 +91,13 @@ If you find this work useful in your research, please cite our paper:
   journal={arXiv preprint arXiv:TODO},
   year={2025}
 }
+
+@article{hayou2024loraplus,
+  title={LoRA+: Efficient Low Rank Adaptation of Large Models},
+  author={Hayou, Soufiane and Ghosh, Nikhil and Yu, Bin},
+  journal={arXiv preprint arXiv:2402.12354},
+  year={2024}
+}
 ```
+
+For the **Heterogeneous Allocation** extensions (TensLoRA+), please refer to the documentation in this repository.

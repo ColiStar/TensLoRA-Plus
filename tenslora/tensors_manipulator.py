@@ -106,7 +106,7 @@ class TuckerLoRA(MotherTensorLoRA):
         if type(n_components) == int:
             n_components = [n_components for i in range(number_modes)]
 
-        self._validate_args(number_modes, dimensions, n_components)
+        TuckerLoRA._validate_args(self, number_modes, dimensions, n_components)
 
         self.n_components = n_components
         self.tucker_core = nn.Parameter(torch.zeros(n_components))
@@ -168,7 +168,7 @@ class CPLoRA(MotherTensorLoRA):
         torch.manual_seed(seed)
         torch.cuda.manual_seed(seed)
 
-        self._validate_args(number_modes, dimensions, n_components)
+        CPLoRA._validate_args(self, number_modes, dimensions, n_components)
 
         self.number_modes = number_modes
         self.n_components = n_components
@@ -196,7 +196,7 @@ class CPLoRA(MotherTensorLoRA):
 
             self.cp_factors.append(factor)
 
-        self.tltorch_tensor = self.make_tltorch_tensor()  # Store the tltorch tensor for later use
+        self.tltorch_tensor = CPLoRA.make_tltorch_tensor(self)  # Store the tltorch tensor for later use
 
     def make_tltorch_tensor(self):
         """Creates the tltorch tensor for the CP decomposition."""
